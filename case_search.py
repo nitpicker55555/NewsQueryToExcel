@@ -17,8 +17,8 @@ def google_search(search_term, api_key, cse_id, start=1, num=10, **kwargs):
     return response.json()
 
 # 您的API密钥和自定义搜索引擎ID
-api_key = "AIzaSyABEdo1vb3VQJfwMU6NmqV239-H4vsfC-c"
-cse_id = "e1a862c0bafc544f5"
+api_key = ""
+cse_id = ""
 
 # 搜索词
 search_term = "Navigation Privacy Leak"
