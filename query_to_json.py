@@ -45,14 +45,14 @@ import time
 import requests
 import json
 
-url_processed_list = []
+url_processed_list = set()
 from selenium_basic_func import *
 def url_web(query_input,url_num=100):
-
+    global url_processed_list
     query_variable = query_input.replace(' ',"+")
 
     # 定义原始 URL
-    url = "https://www.google.com/search?q=Technical+map-making+errors+site%3A*.apnews.com+OR+site%3Awww.reuters.com+OR+site%3Awww.theguardian.com+OR+site%3Awww.bbc.com%2Fnews+OR+site%3Awww.cnn.com+OR+site%3A*.techcrunch.com"
+    url = "https://www.google.com/search?q=Technical+map-making+errors+site%3A*.apnews.com+OR+site%3Awww.theguardian.com+OR+site%3Awww.bbc.com%2Fnews+OR+site%3Awww.cnn.com+OR+site%3A*.techcrunch.com"
 
     new_url = url.replace("Technical+map-making+errors", query_variable)
 
@@ -62,7 +62,7 @@ def url_web(query_input,url_num=100):
         # print(element.get_attribute('href'))
     allowed_domains = [
         "apnews.com",
-        "reuters.com",
+        # "reuters.com",
         "theguardian.com",
         "bbc.com",
         "cnn.com",
@@ -71,7 +71,7 @@ def url_web(query_input,url_num=100):
     url_list_web=[]
     # 输出所有的允许的链接
     length_url_list=0
-
+    break_times=0
     while True:
         length_url_list=len(url_list_web)
         elements = driver.find_elements_by_xpath('//*[@href]')
@@ -82,14 +82,16 @@ def url_web(query_input,url_num=100):
 
             # 检查链接的域名是否在允许的域名列表中
             if any(allowed_domain in domain for allowed_domain in allowed_domains):
-                if href not in url_list_web:
+                if href not in url_list_web and href not in url_processed_list:
                     url_list_web.append(href)
         print(len(url_list_web))
 
         if len(url_list_web)==length_url_list:
-            print(len(url_list_web), "break2")
-            break
-        elif len(url_list_web)>=100:
+            break_times+=1
+            if break_times>=3:
+                print(len(url_list_web), "break2")
+                break
+        elif len(url_list_web)>=300:
             print(len(url_list_web),"break1")
             break
         scroll_to_end()
@@ -107,22 +109,36 @@ def url_web(query_input,url_num=100):
     return url_list_web
 
 def url_check():
+
     global url_processed_list
-    folder_path = r"C:\Users\Morning\Desktop\hiwi\case_spider\case"  # 请替换为实际的文件夹路径
+    results = set()
+    dict_ = {}
+    with open(r'C:\Users\Morning\Desktop\hiwi\heart\paper\sum_file\merged_data.jsonl', 'r', encoding='utf-8') as file:
+        for line in file:
+            each_line = json.loads(line)
+            # if each_line['Relevant']:
+            #
+            # if each_line['folder_path'] not in dict_:
+            #     dict_[each_line['folder_path']] = 0
+            # # if each_line['Url'] not in results:
+            # dict_[each_line['folder_path']] += 1
+            results.add(each_line['Url'])
+    url_processed_list=results
+    # folder_path = r"C:\Users\Morning\Desktop\hiwi\case_spider\case"  # 请替换为实际的文件夹路径
+    #
+    # # 初始化空列表，用于存储'url'键的值
+    #
+    # # folder_path = './'  # 修改为你的文件夹路径
+    # for filename in os.listdir(folder_path):
+    #     # 检查文件名是否符合条件
+    #     if filename.startswith('content_') and filename.endswith('.jsonl'):
+    #         with open(os.path.join(folder_path, filename), 'r', encoding='utf-8') as file:
+    #             for line in file:
+    #                 data = json.loads(line)
+    #                 if 'Url' in data:
+    #                     url_processed_list.append(data['Url'])
+    # return url_processed_list
 
-    # 初始化空列表，用于存储'url'键的值
-
-    # folder_path = './'  # 修改为你的文件夹路径
-    for filename in os.listdir(folder_path):
-        # 检查文件名是否符合条件
-        if filename.startswith('content_') and filename.endswith('.jsonl'):
-            with open(os.path.join(folder_path, filename), 'r', encoding='utf-8') as file:
-                for line in file:
-                    data = json.loads(line)
-                    if 'Url' in data:
-                        url_processed_list.append(data['Url'])
-    return url_processed_list
-url_check()
 def case_search(search_term):
 
     def google_search(search_term, api_key, cse_id, start=1, num=10, **kwargs):
@@ -188,7 +204,7 @@ def construct_excel(file_path,url_list=None):
         options = Options()
         options.add_experimental_option("debuggerAddress", "127.0.0.1:" + str(num))
         options.add_argument('--disable-blink-features=AutomationControlled')
-        driver = webdriver.Chrome(options=options, executable_path=r"C:\Users\Morning\Desktop\hiwi\爬虫\chromedriver.exe")
+        driver = webdriver.Chrome(options=options, executable_path=r"C:\Users\Morning\Downloads\chromedriver-win64 (1)\chromedriver.exe")
         print(num,"work!")
         while True:
 
@@ -199,12 +215,13 @@ def construct_excel(file_path,url_list=None):
                         break
                 if url not in url_processed_list:
 
-                        url_processed_list.append(url)
+                        url_processed_list.add(url)
                         print(url_num, "___________", (url))
 
                         result_list = text_get(driver, url)
 
                         # 创建一个 DataFrame
+
                         each_dict = {
                             'num': url_num,
                             'Time': result_list[0],
@@ -214,13 +231,14 @@ def construct_excel(file_path,url_list=None):
                             'Url': url
                         }
 
-                        # 读取现有的 JSON 文件，并将新的数据追加到文件中
-                        filename = 'case/%s.jsonl' % ("content_" + file_path.replace(".txt", ""))
 
+                        # 读取现有的 JSON 文件，并将新的数据追加到文件中
+                        filename = r'C:\Users\Morning\Desktop\hiwi\case_spider\NewsQueryToExcel\%s.jsonl' % ("content_" + file_path.replace(".txt", ""))
+                        if each_dict['Content']!=None and '2024' not in each_dict['Time']:
                         # 将更新后的数据写回文件
-                        with lock:
-                            with open(filename, 'a') as file:
-                                file.write(json.dumps(each_dict) + "\n")
+                            with lock:
+                                with open(filename, 'a') as file:
+                                    file.write(json.dumps(each_dict) + "\n")
                 else:
                     print(num,url,"processed url")
 
@@ -343,6 +361,7 @@ def construct_excel(file_path,url_list=None):
                 i += 1
                 data_list.append(url)
                 data_queue.put((url,i))
+
     for i in range(6):
         t = threading.Thread(target=each_process, args=(data_queue, lock, i + 9222))
         t.start()
@@ -363,14 +382,14 @@ def construct_excel(file_path,url_list=None):
 """
 
 key_word_list=[
-# "autonomous driving accidents",
+"autonomous driving accidents",
 # "self-driving car crashes",
-# "autonomous vehicle failures",
-# "self-driving technology malfunctions",
-# "Tesla Autopilot accidents",
-# "driverless car incidents",
-# "autonomous driving system errors",
-# "Autonomous Vehicle accidents due to technical issues",
+"autonomous vehicle failures",
+"self-driving technology malfunctions",
+"Tesla Autopilot accidents",
+"driverless car incidents",
+"autonomous driving system errors",
+"Autonomous Vehicle accidents due to technical issues",
 
 # "Navigation system failure",
 # "GPS malfunction accidents",
@@ -386,19 +405,30 @@ key_word_list=[
 
 
 # "Digital cartography disputes",
-"Geospatial mapping controversies",
-"Technical map-making errors",
-"Geographic Information Systems inaccuracies",
-"Border disputes due to digital mapping",
-"Misrepresentation in digital maps",
-"Geospatial data manipulation issues",
-"Digital map bias",
-"Mapping software glitches",
-"Digital territorial disputes"
-]
+# "Geospatial mapping controversies",
+# "Technical map-making errors",
+# "Geographic Information Systems inaccuracies",
+# "Border disputes due to digital mapping",
+# "Misrepresentation in digital maps",
+# "Geospatial data manipulation issues",
+# "Digital map bias",
+# "Mapping software glitches",
+# "Digital territorial disputes"
 
+# "Geographic Information System errors",
+# "Map update lag/delays",
+# "Mapping software bugs",
+# "Geospatial data source discrepancies",
+# "Toponymy disputes of digital map",
+# "Misleading navigation incidents",
+# "Map data tampering",
+# "Map resolution issues",
+# "Mapping privacy controversies",
+# "Risks of unofficial map sources"
+]
+url_check()
 for num,key_word in enumerate(key_word_list):
-    if num >=6:
+    # if num >=6:
         print(key_word,"processing",num)
         # case_search(key_word)
         url_list=url_web(key_word)
